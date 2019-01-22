@@ -1,6 +1,8 @@
 package com.pareshmayani.smsinbox;
 
 import android.app.ListActivity;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -21,6 +23,7 @@ import java.util.List;
  * @author itcuties
  */
 public class MainActivity extends ListActivity {
+    int readInbox = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,53 +40,64 @@ public class MainActivity extends ListActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        Log.d("MainActivity", "onRequestPermissionsResult: ");
 
-        switch (requestCode) {
-            case PermissionHelper.SMS_REQUEST_CODE: {
-                List<SMSData> smsList = new ArrayList<SMSData>();
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-                    Uri contentUri = Telephony.Sms.Inbox.CONTENT_URI;
-                    Cursor c = getContentResolver().query(contentUri, null, null, null, null);
-                    startManagingCursor(c);
+        SharedPreferences sharedPreferences = this.getPreferences(Context.MODE_PRIVATE);
+        int defaultValue = getResources().getInteger(R.integer.read_inbox);
+        long read = sharedPreferences.getInt(getString(R.string.read_inbox), defaultValue);
+        if (read == 0) {
+            switch (requestCode) {
+                case PermissionHelper.SMS_REQUEST_CODE: {
 
-                    // Read the sms data and store it in the list
-                    if (c.moveToFirst()) {
-                        for (int i = 0; i < c.getCount(); i++) {
-                            SMSData sms = new SMSData();
-                            sms.setBody(c.getString(c.getColumnIndexOrThrow("body")).toString());
-                            sms.setNumber(c.getString(c.getColumnIndexOrThrow("address")).toString());
-                            smsList.add(sms);
-                            Log.d("MainActivity",  sms.toString());
+                    List<SMSData> smsList = new ArrayList<SMSData>();
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                        Uri contentUri = Telephony.Sms.Inbox.CONTENT_URI;
+                        Cursor c = getContentResolver().query(contentUri, null, null, null, null);
+                        startManagingCursor(c);
 
-                            c.moveToNext();
+                        // Read the sms data and store it in the list
+                        if (c.moveToFirst()) {
+                            for (int i = 0; i < c.getCount(); i++) {
+                                SMSData sms = new SMSData();
+                                sms.setBody(c.getString(c.getColumnIndexOrThrow("body")).toString());
+                                sms.setNumber(c.getString(c.getColumnIndexOrThrow("address")).toString());
+                                smsList.add(sms);
+                                Log.d("MainActivity", sms.toString());
+
+                                c.moveToNext();
+                            }
                         }
-                    }
-                    c.close();
-                    // Set smsList in the ListAdapter
-                    setListAdapter(new ListAdapter(this, smsList));
+                        c.close();
+                        // Set smsList in the ListAdapter
+                        setListAdapter(new ListAdapter(this, smsList));
 
-                } else {
-                    Uri uri = Uri.parse("content://sms/inbox");
-                    Cursor c = getContentResolver().query(uri, null, null, null, null);
-                    startManagingCursor(c);
+                    } else {
+                        Uri uri = Uri.parse("content://sms/inbox");
+                        Cursor c = getContentResolver().query(uri, null, null, null, null);
+                        startManagingCursor(c);
 
-                    // Read the sms data and store it in the list
-                    if (c.moveToFirst()) {
-                        for (int i = 0; i < c.getCount(); i++) {
-                            SMSData sms = new SMSData();
-                            sms.setBody(c.getString(c.getColumnIndexOrThrow("body")).toString());
-                            sms.setNumber(c.getString(c.getColumnIndexOrThrow("address")).toString());
-                            smsList.add(sms);
+                        // Read the sms data and store it in the list
+                        if (c.moveToFirst()) {
+                            for (int i = 0; i < c.getCount(); i++) {
+                                SMSData sms = new SMSData();
+                                sms.setBody(c.getString(c.getColumnIndexOrThrow("body")).toString());
+                                sms.setNumber(c.getString(c.getColumnIndexOrThrow("address")).toString());
+                                smsList.add(sms);
 
-                            c.moveToNext();
+                                c.moveToNext();
+                            }
                         }
-                    }
-                    c.close();
+                        c.close();
 
-                    // Set smsList in the ListAdapter
-                    setListAdapter(new ListAdapter(this, smsList));
+                        // Set smsList in the ListAdapter
+                        setListAdapter(new ListAdapter(this, smsList));
+
+                    }
+                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                    editor.putInt(getString(R.string.read_inbox), readInbox);
+                    editor.apply();
+                    break;
                 }
-                break;
             }
         }
     }
